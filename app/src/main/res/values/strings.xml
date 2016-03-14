@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">My Application</string>
+
+    <string name="icon_font">&#xe611;</string>
+</resources>
