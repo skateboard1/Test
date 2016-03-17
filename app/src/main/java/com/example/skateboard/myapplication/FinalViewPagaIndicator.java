@@ -1,8 +1,8 @@
 package com.example.skateboard.myapplication;
 
 import android.content.Context;
-import android.database.DataSetObserver;
-import android.os.storage.OnObbStateChangeListener;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.support.v4.widget.EdgeEffectCompat;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -47,7 +47,7 @@ public class FinalViewPagaIndicator extends ViewGroup {
 
     private int touchScrollX;
 
-    private int offsetIndex;
+    private boolean hasAdapter;
 
 
     public FinalViewPagaIndicator(Context context) {
@@ -94,22 +94,34 @@ public class FinalViewPagaIndicator extends ViewGroup {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        calculateItemNumber(widthMeasureSpec, heightMeasureSpec);
-        addAdapterViews();
+        firstSetAdapter(widthMeasureSpec,heightMeasureSpec);
         measureChildren(widthMeasureSpec, heightMeasureSpec);
     }
 
+
+    private void firstSetAdapter(int widthMeasureSpec, int heightMeasureSpec)
+    {
+        calculateItemNumber(widthMeasureSpec, heightMeasureSpec);
+        addAdapterViews();
+        hasAdapter=true;
+    }
+
     private void addAdapterViews() {
-        for (int i = 0; i < willShowNumber; i++) {
-            FinalIndicatorViewHolder itemViewHolder = adapter.onCreateViewHolder(this);
-            addView(itemViewHolder.itemView);
-            adapter.onBindViewHolder(itemViewHolder, i);
-            viewPos.put(i, itemViewHolder);
+        if(adapter!=null && !hasAdapter)
+        {
+            viewPos.clear();
+            for (int i = 0; i < willShowNumber; i++) {
+                FinalIndicatorViewHolder itemViewHolder = adapter.onCreateViewHolder(this);
+                addView(itemViewHolder.itemView);
+                adapter.onBindViewHolder(itemViewHolder, i);
+                viewPos.put(i, itemViewHolder);
+            }
+            childCount = getChildCount();
         }
     }
 
     private void calculateItemNumber(int widthMeasureSpec, int heightMeasureSpec) {
-        if (adapter != null) {
+        if (adapter != null && !hasAdapter) {
             FinalIndicatorViewHolder viewHolder = adapter.onCreateViewHolder(this);
             View itemView = viewHolder.itemView;
             this.addView(itemView);
@@ -124,6 +136,7 @@ public class FinalViewPagaIndicator extends ViewGroup {
                 willShowNumber = adapterItemCount;
             }
             curIndex=willShowNumber-1;
+            firstIndex=0;
             removeAllViews();
         }
 
@@ -131,9 +144,8 @@ public class FinalViewPagaIndicator extends ViewGroup {
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
-        childCount = getChildCount();
         int curLeft = 0;
-        for (int i = 0; i < childCount; i++) {
+        for (int i = 0; i < willShowNumber; i++) {
             View item = getChildAt(i);
             item.layout(curLeft, 0, curLeft + item.getMeasuredWidth(), item.getMeasuredHeight());
             curLeft += item.getMeasuredWidth();
@@ -150,12 +162,22 @@ public class FinalViewPagaIndicator extends ViewGroup {
             case MotionEvent.ACTION_MOVE:
                 float movX = event.getX();
                 float changeX = movX - touchX;
-                scrollBy(-(int) changeX, 0);
-                postInvalidate();
-                if ((getScrollX() - touchScrollX) > itemWidth) {
+//                if(firstIndex==0 && changeX>0)
+//                {
+//                    return true;
+//                }
+//                else if(curIndex==adapter.getItemCount()-1 && changeX<0)
+//                {
+//                    return true;
+//                }
+                if (getScrollX()>= itemWidth) {
                     loadNext();
-                } else if ((getScrollX() - touchScrollX) < -itemWidth) {
+                } else if (getScrollX() <= -itemWidth) {
                     loadPre();
+                }
+                else
+                {
+                    scrollBy(-(int) changeX, 0);
                 }
                 touchX = event.getX();
                 break;
@@ -168,37 +190,41 @@ public class FinalViewPagaIndicator extends ViewGroup {
         if (curIndex >= (adapter.getItemCount() - 1)) {
             return;
         }
+        scrollTo(0,0);
+        ++curIndex;
+        FinalIndicatorViewHolder itemViewHolder=viewPos.get(firstIndex);
+        View itemView=itemViewHolder.itemView;
+        removeView(itemView);
+        adapter.onBindViewHolder(itemViewHolder,curIndex);
+        addView(itemView);
 
-        FinalIndicatorViewHolder itemViewHolder = viewPos.get(firstIndex);
+
+
+
+        viewPos.put(curIndex,itemViewHolder);
+
         viewPos.remove(firstIndex);
-        removeViewAt(0);
+        ++firstIndex;
 
-        offsetIndex++;
-        curIndex=childCount+offsetIndex;
-        firstIndex=offsetIndex;
-
-        adapter.onBindViewHolder(itemViewHolder, curIndex);
-        viewPos.put(curIndex, itemViewHolder);
-
-        touchScrollX = getScrollX();
     }
 
     private void loadPre() {
-
         if (firstIndex <=0) {
             return;
         }
 
-
-        FinalIndicatorViewHolder itemViewHolder = viewPos.remove(curIndex);
-        removeView(itemViewHolder.itemView);
-        offsetIndex--;
-        curIndex-=offsetIndex;
-        firstIndex=offsetIndex;
-
+        --firstIndex;
+        FinalIndicatorViewHolder itemViewHolder=viewPos.get(curIndex);
         adapter.onBindViewHolder(itemViewHolder,firstIndex);
         viewPos.put(firstIndex,itemViewHolder);
-        touchScrollX = getScrollX();
+        View itemView=itemViewHolder.itemView;
+        removeView(itemView);
+        addView(itemView,0);
+        scrollTo(itemWidth,0);
+        viewPos.remove(curIndex);
+        --curIndex;
+
+
     }
 
     @Override
@@ -232,5 +258,13 @@ public class FinalViewPagaIndicator extends ViewGroup {
             this.itemView = view;
         }
     }
+
+//    @Override
+//    protected void dispatchDraw(Canvas canvas) {
+//        int state=canvas.save();
+//        canvas.translate(getScrollX(),0);
+//        super.dispatchDraw(canvas);
+//        canvas.restoreToCount(state);
+//    }
 
 }
