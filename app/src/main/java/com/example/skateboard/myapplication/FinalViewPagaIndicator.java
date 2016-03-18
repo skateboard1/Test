@@ -88,6 +88,8 @@ public class FinalViewPagaIndicator extends ViewGroup {
     public void setAdapter(ViewPageIndicatorAdapter adapter) {
         this.adapter = adapter;
         postInvalidate();
+        scrollTo(300,0);
+        scrollTo(0,0);
     }
 
 
@@ -170,9 +172,9 @@ public class FinalViewPagaIndicator extends ViewGroup {
 //                {
 //                    return true;
 //                }
-                if (getScrollX()>= itemWidth) {
+                if (getScrollX()>= itemWidth && changeX<0) {
                     loadNext();
-                } else if (getScrollX() <= -itemWidth) {
+                } else if (getScrollX() <= 0 && changeX>0) {
                     loadPre();
                 }
                 else
@@ -191,6 +193,7 @@ public class FinalViewPagaIndicator extends ViewGroup {
             return;
         }
         scrollTo(0,0);
+        postInvalidate();
         ++curIndex;
         FinalIndicatorViewHolder itemViewHolder=viewPos.get(firstIndex);
         View itemView=itemViewHolder.itemView;
@@ -213,18 +216,16 @@ public class FinalViewPagaIndicator extends ViewGroup {
             return;
         }
 
-        --firstIndex;
+        firstIndex--;
         FinalIndicatorViewHolder itemViewHolder=viewPos.get(curIndex);
-        adapter.onBindViewHolder(itemViewHolder,firstIndex);
-        viewPos.put(firstIndex,itemViewHolder);
         View itemView=itemViewHolder.itemView;
         removeView(itemView);
-        addView(itemView,0);
+        adapter.onBindViewHolder(itemViewHolder,firstIndex);
         scrollTo(itemWidth,0);
+        addView(itemView,0);
+        viewPos.put(firstIndex,itemViewHolder);
         viewPos.remove(curIndex);
-        --curIndex;
-
-
+        curIndex--;
     }
 
     @Override
